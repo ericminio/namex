@@ -19,7 +19,7 @@ from namex.models import User, State, Comment, NameCommentSchema, Event
 from namex.models import ApplicantSchema
 from namex.models import DecisionReason
 
-from namex.services import ServicesError, MessageServices, EventRecorder
+from namex.services import ServicesError, MessageServices, EventRecorder, DashboardService
 
 from namex.services.name_request import check_ownership, get_or_create_user_by_jwt, valid_state_transition, convert_to_ascii
 from namex.utils.util import cors_preflight
@@ -66,7 +66,22 @@ class Echo(Resource):
     @jwt.requires_auth
     def get(*args, **kwargs):
         try:
+            data
             return jsonify(g.jwt_oidc_token_info), 200
+        except Exception as err:
+            return {"error": "{}".format(err)}, 500
+
+@cors_preflight("GET")
+@api.route('/dashboard', methods=['GET', 'OPTIONS'])
+class Dashboard(Resource):
+
+    @staticmethod
+    @cors.crossdomain(origin='*')
+    @jwt.requires_auth
+    def get(*args, **kwargs):
+        try:
+            data = DashboardService.get_data()
+            return jsonify(data), 200
         except Exception as err:
             return {"error": "{}".format(err)}, 500
 
