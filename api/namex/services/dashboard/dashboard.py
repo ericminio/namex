@@ -15,32 +15,14 @@ class DashboardService(object):
         try:
             days = db.session.execute(
                 """
-                    select 
-                        id,
-                        nr_id,
-                        event_dt
-                    into temporary candidates
-                    from events
+                    SELECT 
+                        submitted_date::timestamp::date as day,
+                        count(1) as count 
+                    FROM requests
                     where
                         state_cd = 'DRAFT'
-                        and nr_id in (
-                            select id 
-                            from requests r 
-                            where r.state_cd='DRAFT' and r.priority_cd='N'
-                        );
-                    
-                    select
-                        nr_id,
-                        min(event_dt) as event_dt
-                    into temporary candidates_creation
-                    from candidates
-                    group by nr_id;
-                    
-                    SELECT 
-                        event_dt::timestamp::date as day,
-                        count(1) as count 
-                    FROM candidates_creation
-                    group by event_dt::timestamp::date
+                        and priority_cd = 'N'
+                    group by submitted_date::timestamp::date
                     order by day desc;
                 """
                 ).fetchall()

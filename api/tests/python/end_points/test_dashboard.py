@@ -26,8 +26,8 @@ claims = {
                 ]
             }
          }
-def seed_database_with(requests=[], events=[]):
-    from namex.models import Request as RequestDAO, State, Event as EventDAO
+def seed_database_with(requests=[]):
+    from namex.models import Request as RequestDAO
 
     for request in requests:
         nr = RequestDAO()
@@ -35,15 +35,8 @@ def seed_database_with(requests=[], events=[]):
         nr.nrNum = 'NR ' + str(request[0])
         nr.stateCd = request[1]
         nr.priorityCd = request[2]
+        nr.submittedDate = request[3]
         nr.save_to_db()
-
-    for event in events:
-        e = EventDAO()
-        e.nrId = event[0]
-        e.action = event[1]
-        e.stateCd = event[2]
-        e.eventDate = event[3]
-        e.save_to_db()
 
 
 def get_dashboard_data(client, jwt):
@@ -54,38 +47,35 @@ def get_dashboard_data(client, jwt):
     data = json.loads(rv.data)
     return data
 
-def get_dashboard_data_having_database_seeded_with(client, jwt, requests=[], events=[]):
-    seed_database_with(requests, events)
+def get_dashboard_data_having_database_seeded_with(client, jwt, requests=[]):
+    seed_database_with(requests)
     return get_dashboard_data(client, jwt)
 
 def verify_given_days_equals(data, expected):
     print(data['days'])
     assert expected == data['days']
 
-def verify_given_data_produces_expected_dashboard(client, jwt, requests=[], events=[], expected=[]):
-    data = get_dashboard_data_having_database_seeded_with(client, jwt, requests, events)
+def verify_given_data_produces_expected_dashboard(client, jwt, requests=[], expected=[]):
+    data = get_dashboard_data_having_database_seeded_with(client, jwt, requests)
     verify_given_days_equals(data, expected)
 
 def test_get_dashboard_priority_request(client, jwt, app):
     data = get_dashboard_data_having_database_seeded_with(client, jwt,
         requests=[
-            [1, 'DRAFT', 'Y'],
-            [2, 'DRAFT', 'N'],
-            [3, 'HOLD', 'Y']
+            [1, 'DRAFT', 'Y', '2018-10-19 22:00:00'],
+            [2, 'DRAFT', 'N', '2018-10-19 22:00:00'],
+            [3, 'HOLD', 'Y', '2018-10-19 22:00:00']
         ]
     )
 
     assert data['priorityRequestCount'] == 1
-    assert data['days'] == []
+    assert data['days'] == [{'date': 'October 19', 'count': 1}]
 
 
 def test_get_dashboard_day_one(client, jwt, app):
     verify_given_data_produces_expected_dashboard(client, jwt,
         requests=[
-            [1, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-19 22:00:00']
+            [1, 'DRAFT', 'N', '2018-10-19 22:00:00']
         ],
         expected=[
             {'date': 'October 19', 'count': 1}
@@ -95,12 +85,8 @@ def test_get_dashboard_day_one(client, jwt, app):
 def test_get_dashboard_day_one_with_count_two(client, jwt, app):
     verify_given_data_produces_expected_dashboard(client, jwt,
         requests=[
-            [1, 'DRAFT', 'N'],
-            [2, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-19 22:00:00'],
-            [2, 'post', 'DRAFT', '2018-10-19 21:00:00']
+            [1, 'DRAFT', 'N', '2018-10-19 22:00:00'],
+            [2, 'DRAFT', 'N', '2018-10-19 21:00:00']
         ],
         expected=[
             {'date': 'October 19', 'count': 2}
@@ -110,14 +96,9 @@ def test_get_dashboard_day_one_with_count_two(client, jwt, app):
 def test_get_dashboard_two_days(client, jwt, app):
     verify_given_data_produces_expected_dashboard(client, jwt,
         requests=[
-            [1, 'DRAFT', 'N'],
-            [2, 'DRAFT', 'N'],
-            [3, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-20 22:00:00'],
-            [2, 'post', 'DRAFT', '2018-10-20 21:00:00'],
-            [3, 'post', 'DRAFT', '2018-10-21 21:00:00']
+            [1, 'DRAFT', 'N', '2018-10-20 22:00:00'],
+            [2, 'DRAFT', 'N', '2018-10-20 21:00:00'],
+            [3, 'DRAFT', 'N', '2018-10-21 21:00:00']
         ],
         expected=[
             {'date': 'October 21', 'count': 1},
@@ -128,10 +109,7 @@ def test_get_dashboard_two_days(client, jwt, app):
 def test_ignore_draft_now_with_priority_y(client, jwt, app):
     verify_given_data_produces_expected_dashboard(client, jwt,
         requests=[
-            [1, 'DRAFT', 'Y']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-20 22:00:00']
+            [1, 'DRAFT', 'Y', '2018-10-20 22:00:00']
         ],
         expected=[
         ]
@@ -140,53 +118,8 @@ def test_ignore_draft_now_with_priority_y(client, jwt, app):
 def test_ignore_draft_became_something_else(client, jwt, app):
     verify_given_data_produces_expected_dashboard(client, jwt,
         requests=[
-            [1, 'APPROVED', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-20 22:00:00']
+            [1, 'APPROVED', 'N', '2018-10-20 22:00:00']
         ],
         expected=[
-        ]
-    )
-
-def test_ignore_patches(client, jwt, app):
-    verify_given_data_produces_expected_dashboard(client, jwt,
-        requests=[
-            [1, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-20 21:00:00'],
-            [1, 'put',  'DRAFT', '2018-10-20 22:00:00']
-        ],
-        expected=[
-            {'date': 'October 20', 'count': 1}
-        ]
-    )
-
-def test_resists_missing_draft_event(client, jwt, app):
-    verify_given_data_produces_expected_dashboard(client, jwt,
-        requests=[
-            [1, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'HISTORICAL', '2018-10-20 21:00:00'],
-            [1, 'put',  'HISTORICAL', '2018-10-20 22:00:00']
-        ],
-        expected=[
-        ]
-    )
-
-def test_consider_only_the_firt_appearance_as_draft(client, jwt, app):
-    verify_given_data_produces_expected_dashboard(client, jwt,
-        requests=[
-            [1, 'DRAFT', 'N']
-        ],
-        events=[
-            [1, 'post', 'DRAFT', '2018-10-11 21:00:00'],
-            [1, 'post', 'DRAFT', '2018-10-11 22:00:00'],
-            [1, 'post', 'DRAFT', '2018-10-22 21:00:00']
-        ],
-        expected=[
-            {'date': 'October 11', 'count': 1}
         ]
     )
