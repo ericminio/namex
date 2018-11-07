@@ -26,14 +26,22 @@ claims = {
 
 
 
-def search_exact_match(client, jwt, query):
-    import json
-    token = jwt.create_jwt(claims, token_header)
-    headers = {'Authorization': 'Bearer ' + token}
-    rv = client.get('/api/v1/exact-match', headers=headers)
-    assert rv.status_code == 200
-    data = json.loads(rv.data)
-    return data
+
+def clean_database(client, jwt):
+    import requests
+    url = 'http://localhost:8983/solr/exact_match/update?commit=true'
+    headers = {'content-type': 'text/xml'}
+    data = '<delete><query>id:*</query></delete>'
+    r = requests.post(url, headers=headers, data=data)
+    assert r.status_code == 200
+
+def seed_database_with(client, jwt, name):
+    import requests
+    url = 'http://localhost:8983/solr/exact_match/update?commit=true'
+    headers = {'content-type': 'application/json'}
+    data = '[{"name":"' + name + '", "id":"1"}]'
+    r = requests.post(url, headers=headers, data=data)
+    assert r.status_code == 200
 
 def verify(data, expected):
     print(data['names'])
@@ -44,7 +52,18 @@ def verify_exact_match_results(client, jwt, query, expected):
     verify(data, expected)
 
 
+def search_exact_match(client, jwt, query):
+    import json
+    token = jwt.create_jwt(claims, token_header)
+    headers = {'Authorization': 'Bearer ' + token}
+    rv = client.get('/api/v1/exact-match', headers=headers)
+    assert rv.status_code == 200
+    data = json.loads(rv.data)
+    return data
+
 def test_exact_match(client, jwt, app):
+    clean_database(client, jwt)
+    seed_database_with(client, jwt, 'JM Van Damme Ltd')
     verify_exact_match_results(client, jwt,
         query='JM Van Damme Inc',
         expected=[
