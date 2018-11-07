@@ -132,6 +132,7 @@
     <field name="name_with_synonyms" type="text_name_singular_synonyms" multiValued="false" indexed="true"
         stored="true"/>
     <field name="name_compressed" type="text_name_compressed" multiValued="false" indexed="true" stored="true"/>
+    <field name="name_exact_match" type="text_name_exact_match" multiValued="false" indexed="true" stored="true"/>
 
     <!-- Only enabled in the "schemaless" data-driven example (assuming the client
          does not know what fields may be searched) because it's very expensive to index everything twice. -->
@@ -707,6 +708,19 @@
       </analyzer>
     </fieldType>
 
+    <fieldType name="text_name_exact_match" class="solr.TextField" positionIncrementGap="100" multiValued="false">
+      <analyzer>
+          <tokenizer class="solr.StandardTokenizerFactory"/>
+          <filter class="solr.LowerCaseFilterFactory"/>
+          <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_en.txt" />
+          <filter class="solr.FingerprintFilterFactory" separator="_" />
+          <filter class="solr.PatternReplaceFilterFactory" pattern="(_)" replacement="" replace="all"/>
+          <filter class="solr.PatternReplaceFilterFactory" pattern="(\.)" replacement="" replace="all"/>
+          <filter class="solr.PatternReplaceFilterFactory" pattern="(&amp;)" replacement="" replace="all"/>
+          <filter class="solr.PatternReplaceFilterFactory" pattern="([a-z])\1+" replacement="$1" replace="all"/>
+      </analyzer>
+    </fieldType>
+
     <!-- some examples for different languages (generally ordered by ISO code) -->
 
     <!-- Arabic -->
@@ -1136,4 +1150,5 @@
     <copyField source="name" dest="name_copy"/>
     <copyField source="name" dest="name_with_synonyms"/>
     <copyField source="name" dest="name_compressed"/>
+    <copyField source="name" dest="name_exact_match"/>
 </schema>

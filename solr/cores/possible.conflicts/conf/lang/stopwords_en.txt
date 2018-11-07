@@ -53,6 +53,7 @@ to
 #ampersand
 #plus
 #addition of designations
+and
 association
 assoc
 assoc.
