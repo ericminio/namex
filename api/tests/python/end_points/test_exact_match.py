@@ -129,6 +129,24 @@ def test_ignores_ampersand(client, jwt, app):
        ]
     )
 
+def test_ignores_comma(client, jwt, app):
+    seed_database_with(client, jwt, 'JM, Van Damme Inc')
+    verify_exact_match_results(client, jwt,
+       query='JM Van Damme Inc',
+       expected=[
+           {'name': 'JM, Van Damme Inc'}
+       ]
+    )
+
+def test_ignores_exclamation_mark(client, jwt, app):
+    seed_database_with(client, jwt, 'JM! Van Damme Inc')
+    verify_exact_match_results(client, jwt,
+       query='JM Van Damme Inc',
+       expected=[
+           {'name': 'JM! Van Damme Inc'}
+       ]
+    )
+
 def test_no_match_because_additional_initial(client, jwt, app):
     seed_database_with(client, jwt, 'J.M.J. Van Damme Trucking Inc')
     verify_exact_match_results(client, jwt,
@@ -151,13 +169,57 @@ def test_no_match_because_missing_one_word(client, jwt, app):
     )
 
 def test_duplicated_letters(client, jwt, app):
-    seed_database_with(client, jwt, 'Dame Trucking Inc')
+    seed_database_with(client, jwt, 'Damme Trucking Inc')
     verify_exact_match_results(client, jwt,
-       query='Damme Trucking Inc',
+       query='Dame Trucking Inc',
        expected=[
-           {'name': 'Dame Trucking Inc'}
+           {'name': 'Damme Trucking Inc'}
        ]
     )
+
+def test_entity_suffixes(client, jwt, app):
+    suffixes = [
+        'limited',
+        'ltd.',
+        'ltd',
+        'incorporated',
+        'inc',
+        'inc.',
+        'corporation',
+        'corp.',
+        'limitee',
+        'ltee',
+        'incorporee',
+        'llc',
+        'l.l.c.',
+        'limited liability company',
+        'limited liability co.',
+        'llp',
+        'limited liability partnership',
+        'societe a responsabilite limitee',
+        'societe en nom collectif a responsabilite limitee',
+        'srl',
+        'sencrl',
+        'ulc',
+        'unlimited liability company',
+        'association',
+        'assoc',
+        'assoc.',
+        'assn',
+        'co',
+        'co.',
+        'society',
+        'soc',
+        'soc.'
+    ]
+    for suffix in suffixes:
+        seed_database_with(client, jwt, 'Van Trucking ' + suffix)
+        verify_exact_match_results(client, jwt,
+           query='Van Trucking',
+           expected=[
+               {'name': 'Van Trucking ' + suffix}
+           ]
+        )
 
 
 
