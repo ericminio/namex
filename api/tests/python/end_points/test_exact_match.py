@@ -2,6 +2,7 @@ from namex.models import User
 import os
 import requests
 import json
+import pytest
 
 token_header = {
                 "alg": "RS256",
@@ -27,6 +28,13 @@ claims = {
             }
          }
 SOLR_URL = os.getenv('SOLR_TEST_URL')
+
+@pytest.fixture(scope="session", autouse=True)
+def reload_schema(request):
+    url = SOLR_URL + '/solr/admin/cores?action=RELOAD&core=possible.conflicts&wt=json'
+    r = requests.get(url)
+
+    assert r.status_code == 200
 
 def test_solr_available(app, client, jwt):
     url = SOLR_URL + '/solr/possible.conflicts/admin/ping'
