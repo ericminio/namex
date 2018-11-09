@@ -221,6 +221,15 @@ def test_entity_suffixes(client, jwt, app):
            ]
         )
 
+def test_numbers_preserved(client, jwt, app):
+    seed_database_with(client, jwt, 'Van 4 Trucking Inc')
+    verify_exact_match_results(client, jwt,
+       query='Van 4 Trucking ltd',
+       expected=[
+           {'name': 'Van 4 Trucking Inc'}
+       ]
+    )
+
 
 
 
