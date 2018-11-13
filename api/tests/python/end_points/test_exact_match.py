@@ -50,11 +50,11 @@ def clean_database(client, jwt):
 
     assert r.status_code == 200
 
-def seed_database_with(client, jwt, name):
+def seed_database_with(client, jwt, name, id='1', source='2'):
     clean_database(client, jwt)
     url = SOLR_URL + '/solr/possible.conflicts/update?commit=true'
     headers = {'content-type': 'application/json'}
-    data = '[{"source":"CORP", "name":"' + name + '", "id":"1"}]'
+    data = '[{"source":"' + source + '", "name":"' + name + '", "id":"'+ id +'"}]'
     r = requests.post(url, headers=headers, data=data)
 
     assert r.status_code == 200
@@ -68,6 +68,15 @@ def verify_exact_match_results(client, jwt, query, expected):
     data = search_exact_match(client, jwt, query)
     verify(data, expected)
 
+def verify_exact_match(client, jwt, query, expected):
+    data = search_exact_match(client, jwt, query)
+    expect = [
+        { 'name':expected, 'id':'1', 'source':'2' }
+    ]
+    if expected == None:
+        expect = []
+    verify(data, expect)
+
 def search_exact_match(client, jwt, query):
     token = jwt.create_jwt(claims, token_header)
     headers = {'Authorization': 'Bearer ' + token}
@@ -78,111 +87,93 @@ def search_exact_match(client, jwt, query):
 
 def test_find_same_name(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
         query='JM Van Damme inc',
-        expected=[
-            { 'name':'JM Van Damme inc' }
-        ]
+        expected='JM Van Damme inc'
     )
 
 def test_resists_different_type(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
         query='JM Van Damme ltd',
-        expected=[
-            { 'name':'JM Van Damme inc' }
-        ]
+        expected='JM Van Damme inc'
     )
 
 def test_case_insensitive(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
         query='JM VAN DAMME INC',
-        expected=[
-            { 'name':'JM Van Damme inc' }
-        ]
+        expected='JM Van Damme inc'
     )
 
 def test_no_match(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
         query='Hello BC inc',
-        expected=[]
+        expected=None
     )
 
 def test_ignores_and(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='J and M Van Damme inc',
-       expected=[
-           {'name': 'JM Van Damme inc'}
-       ]
+       expected='JM Van Damme inc'
     )
 
 def test_ignores_dots(client, jwt, app):
     seed_database_with(client, jwt, 'J.M. Van Damme Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme Inc',
-       expected=[
-           {'name': 'J.M. Van Damme Inc'}
-       ]
+       expected='J.M. Van Damme Inc'
     )
 
 def test_ignores_ampersand(client, jwt, app):
     seed_database_with(client, jwt, 'J&M & Van Damme Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme Inc',
-       expected=[
-           {'name': 'J&M & Van Damme Inc'}
-       ]
+       expected='J&M & Van Damme Inc'
     )
 
 def test_ignores_comma(client, jwt, app):
     seed_database_with(client, jwt, 'JM, Van Damme Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme Inc',
-       expected=[
-           {'name': 'JM, Van Damme Inc'}
-       ]
+       expected='JM, Van Damme Inc'
     )
 
 def test_ignores_exclamation_mark(client, jwt, app):
     seed_database_with(client, jwt, 'JM! Van Damme Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme Inc',
-       expected=[
-           {'name': 'JM! Van Damme Inc'}
-       ]
+       expected='JM! Van Damme Inc'
     )
 
 def test_no_match_because_additional_initial(client, jwt, app):
     seed_database_with(client, jwt, 'J.M.J. Van Damme Trucking Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='J.M. Van Damme Trucking Inc',
-       expected=[]
+       expected=None
     )
 
 def test_no_match_because_additional_word(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme Trucking Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme Trucking International Inc',
-       expected=[]
+       expected=None
     )
 
 def test_no_match_because_missing_one_word(client, jwt, app):
     seed_database_with(client, jwt, 'JM Van Damme Physio inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='JM Van Damme inc',
-       expected=[]
+       expected=None
     )
 
 def test_duplicated_letters(client, jwt, app):
     seed_database_with(client, jwt, 'Damme Trucking Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='Dame Trucking Inc',
-       expected=[
-           {'name': 'Damme Trucking Inc'}
-       ]
+       expected='Damme Trucking Inc'
     )
 
 def test_entity_suffixes(client, jwt, app):
@@ -222,19 +213,25 @@ def test_entity_suffixes(client, jwt, app):
     ]
     for suffix in suffixes:
         seed_database_with(client, jwt, 'Van Trucking ' + suffix)
-        verify_exact_match_results(client, jwt,
+        verify_exact_match(client, jwt,
            query='Van Trucking',
-           expected=[
-               {'name': 'Van Trucking ' + suffix}
-           ]
+           expected='Van Trucking ' + suffix
         )
 
 def test_numbers_preserved(client, jwt, app):
     seed_database_with(client, jwt, 'Van 4 Trucking Inc')
-    verify_exact_match_results(client, jwt,
+    verify_exact_match(client, jwt,
        query='Van 4 Trucking ltd',
+       expected='Van 4 Trucking Inc'
+
+    )
+
+def test_returns_all_fields_that_we_need(client, jwt, app):
+    seed_database_with(client, jwt, 'Van Trucking Inc', 'any-id', 'any-source')
+    verify_exact_match_results(client, jwt,
+       query='Van Trucking ltd',
        expected=[
-           {'name': 'Van 4 Trucking Inc'}
+           {'name': 'Van Trucking Inc', 'id':'any-id', 'source':'any-source'}
        ]
     )
 
