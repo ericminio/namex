@@ -1,6 +1,4 @@
-
 import os
-
 import dotenv
 
 
@@ -21,6 +19,20 @@ class Config(object):
     SECRET_KEY = os.getenv('SOLR_FEEDER_FLASK_SECRET_KEY')
     if not SECRET_KEY:
         raise RuntimeError('Environment variable SOLR_FEEDER_FLASK_SECRET_KEY in not defined')
+
+    user = os.getenv('NAMES_DATABASE_USERNAME', '')
+    password = os.getenv('NAMES_DATABASE_PASSWORD', '')
+    name = os.getenv('NAMES_DATABASE_NAME', '')
+    host = os.getenv('NAMES_DATABASE_HOST', '')
+    port = os.getenv('NAMES_DATABASE_PORT', '5432')
+    SQLALCHEMY_DATABASE_URI = 'postgresql://{user}:{password}@{host}:{port}/{name}'.format(
+        user=user,
+        password=password,
+        host=host,
+        port=port,
+        name=name,
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS="False"
 
     DEBUG = False
     TESTING = False
