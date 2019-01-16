@@ -1,8 +1,14 @@
 language: python
 python:
   - "3.6"
+services:
+  - postgresql
 install:
   - pip install -r solr-admin-app/requirements/dev.txt
+before_script:
+  - psql -c 'create database namex;' -U postgres
+  - export SOLR_ADMIN_APP_DATABASE_NAME=namex
+  - export SOLR_ADMIN_APP_DATABASE_USERNAME=postgres
 script:
   - pytest solr-admin-app/tests
 
