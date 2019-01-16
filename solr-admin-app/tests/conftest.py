@@ -29,7 +29,11 @@ def get_browser():
     if platform.system() == 'Windows':
         gecko = os.path.join(os.path.dirname(__file__), 'external', 'support', 'geckodriver', 'windows', 'geckodriver.exe')
 
-    return webdriver.Firefox(executable_path=gecko)
+    from selenium.webdriver.firefox.options import Options
+    options = Options()
+    options.headless = True
+
+    return webdriver.Firefox(options=options, executable_path=gecko)
 
 
 @pytest.fixture(scope="session")

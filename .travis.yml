@@ -1,0 +1,8 @@
+language: python
+python:
+  - "3.6"
+install:
+  - pip install -r solr-admin-app/requirements.txt
+script:
+  - pytest solr-admin-app/tests
+
